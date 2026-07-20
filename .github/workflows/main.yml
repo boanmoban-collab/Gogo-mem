@@ -2,7 +2,7 @@ name: Maria Bot Build & Release
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "ci/production-ready" ]
     tags: [ "*" ]
   workflow_dispatch:
 
@@ -39,16 +39,35 @@ jobs:
     - name: Prepare Keystore and key.properties (use secret or generate temp)
       run: |
         mkdir -p app
-        if [ -n "${{ secrets.CM_KEYSTORE }}" ]; then
-          echo "Using provided keystore secret"
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "Using provided KEYSTORE_BASE64 secret"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
+        elif [ -n "${{ secrets.CM_KEYSTORE }}" ]; then
+          echo "Using provided CM_KEYSTORE secret"
           echo "${{ secrets.CM_KEYSTORE }}" | base64 --decode > app/release.keystore
         fi
 
-        if [ -n "${{ secrets.CM_KEYSTORE_PASSWORD }}" ] && [ -n "${{ secrets.CM_KEY_ALIAS }}" ]; then
+        # Extract keystore properties with fallback
+        STORE_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
+        if [ -z "$STORE_PASS" ]; then
+          STORE_PASS="${{ secrets.CM_KEYSTORE_PASSWORD }}"
+        fi
+
+        ALIAS="${{ secrets.KEY_ALIAS }}"
+        if [ -z "$ALIAS" ]; then
+          ALIAS="${{ secrets.CM_KEY_ALIAS }}"
+        fi
+
+        KEY_PASS="${{ secrets.KEY_PASSWORD }}"
+        if [ -z "$KEY_PASS" ]; then
+          KEY_PASS="$STORE_PASS"
+        fi
+
+        if [ -n "$STORE_PASS" ] && [ -n "$ALIAS" ]; then
           echo "storeFile=release.keystore" > key.properties
-          echo "storePassword=${{ secrets.CM_KEYSTORE_PASSWORD }}" >> key.properties
-          echo "keyAlias=${{ secrets.CM_KEY_ALIAS }}" >> key.properties
-          echo "keyPassword=${{ secrets.CM_KEYSTORE_PASSWORD }}" >> key.properties
+          echo "storePassword=$STORE_PASS" >> key.properties
+          echo "keyAlias=$ALIAS" >> key.properties
+          echo "keyPassword=$KEY_PASS" >> key.properties
         else
           echo "Secrets missing — generating temporary keystore for CI"
           keytool -genkeypair -v \
