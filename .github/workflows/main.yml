@@ -39,12 +39,14 @@ jobs:
     - name: Prepare Keystore and key.properties (use secret or generate temp)
       run: |
         mkdir -p app
+        
+        # Try to decode the keystore
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-          echo "Using provided KEYSTORE_BASE64 secret"
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
+          echo "Decoding KEYSTORE_BASE64 secret..."
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore || rm -f app/release.keystore
         elif [ -n "${{ secrets.CM_KEYSTORE }}" ]; then
-          echo "Using provided CM_KEYSTORE secret"
-          echo "${{ secrets.CM_KEYSTORE }}" | base64 --decode > app/release.keystore
+          echo "Decoding CM_KEYSTORE secret..."
+          echo "${{ secrets.CM_KEYSTORE }}" | base64 --decode > app/release.keystore || rm -f app/release.keystore
         fi
 
         # Extract keystore properties with fallback
@@ -63,13 +65,29 @@ jobs:
           KEY_PASS="$STORE_PASS"
         fi
 
-        if [ -n "$STORE_PASS" ] && [ -n "$ALIAS" ]; then
+        # Validate the decoded keystore if it exists
+        KEYSTORE_VALID=false
+        if [ -f app/release.keystore ] && [ -n "$STORE_PASS" ] && [ -n "$ALIAS" ]; then
+          echo "Validating decoded keystore with keytool..."
+          if keytool -list -keystore app/release.keystore -storepass "$STORE_PASS" -alias "$ALIAS" > /dev/null 2>&1; then
+            echo "✅ Decoded keystore is valid and matching credentials."
+            KEYSTORE_VALID=true
+          else
+            echo "⚠️ Decoded keystore is invalid, corrupted, or credentials mismatch! Deleting corrupt keystore."
+            rm -f app/release.keystore
+          fi
+        fi
+
+        # Setup key.properties and generate temp keystore if needed
+        if [ "$KEYSTORE_VALID" = true ]; then
+          echo "Configuring key.properties using user secrets"
           echo "storeFile=release.keystore" > key.properties
           echo "storePassword=$STORE_PASS" >> key.properties
           echo "keyAlias=$ALIAS" >> key.properties
           echo "keyPassword=$KEY_PASS" >> key.properties
         else
-          echo "Secrets missing — generating temporary keystore for CI"
+          echo "Secrets invalid or missing — generating temporary keystore for CI"
+          rm -f app/release.keystore
           keytool -genkeypair -v \
             -keystore app/release.keystore \
             -storepass androidci \
