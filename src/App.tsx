@@ -1989,7 +1989,7 @@ export default function App() {
                       {/* Real Action Links */}
                       <div className="space-y-2 pt-2 border-t border-[#1f2937]">
                         <a
-                          href="https://github.com/boanmoban-collab/Boan-Moban/actions"
+                          href="https://github.com/boanmoban-collab/Gogo-mem/actions"
                           target="_blank"
                           rel="noreferrer"
                           className="w-full py-2 bg-[#24292e] hover:bg-[#1a1e22] text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center border border-[#3f4750]"
@@ -1997,7 +1997,7 @@ export default function App() {
                           👁️ مراقبة البناء المباشر في GitHub Actions
                         </a>
                         <a
-                          href="https://github.com/boanmoban-collab/Boan-Moban/releases"
+                          href="https://github.com/boanmoban-collab/Gogo-mem/releases"
                           target="_blank"
                           rel="noreferrer"
                           className="w-full py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center"
